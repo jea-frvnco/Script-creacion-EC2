@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Variables
+AMI_ID="ami-0fff1b9a61dec8a5f"
+INSTANCE_TYPE="t2.micro" 
+KEY_NAME="vockey"  
+VPC_ID="vpc-069215cebc586b7a1" 
+INSTANCE_NAME="prueba" 
+###########################################
+# Crear el grupo de segurida
+GROUP_NAME="launch-wizard-1"
+aws ec2 create-security-group --group-name $GROUP_NAME --description "Grupo de seguridad para EC2" --vpc-id $VPC_ID
+SECURITY_GROUP_ID=$(aws ec2 describe-security-groups --group-names $GROUP_NAME --query "SecurityGroups[0].GroupId" --output text)
+###################################################################################################################################
+# Permitir acceso SSH (puerto 22) al grupo de seguridad
+aws ec2 authorize-security-group-ingress --group-id $SECURITY_GROUP_ID --protocol tcp --port 22 --cidr 0.0.0.0/0
+##################################################################################################################################
+# Crear la instancia EC2
+aws ec2 run-instances \
+    --image-id $AMI_ID \
+    --instance-type $INSTANCE_TYPE \
+    --key-name $KEY_NAME \
+    --network-interfaces "AssociatePublicIpAddress=true,DeviceIndex=0,Groups=$SECURITY_GROUP_ID" \
+    --count 1 \
+    --ebs-optimized false \
+    --credit-specification "CpuCredits=standard" \
+    --metadata-options "HttpEndpoint=enabled,HttpPutResponseHopLimit=2,HttpTokens=required" \
+    --private-dns-name-options "HostnameType=ip-name,EnableResourceNameDnsARecord=true,EnableResourceNameDnsAAAARecord=false"
+    --tag-specifications "ResourceType=instance,Tags=[{Key=Name,Value=$INSTANCE_NAME}]"
+echo "Instancia EC2 creada con AMI ID: $AMI_ID"
